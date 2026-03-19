@@ -1,9 +1,30 @@
 // ── app.js ── Firebase Auth + Firestore Sync + Full UI ────────────────
+// VERSION: 2025-03-15-v4
+console.log('[Kochplan] app.js v4 loaded');
 
-import { PHASES, RATING_LABELS, ARRIVAL_CRITERIA, WEEKS } from './data.js';
+// ─── LOAD DATA ──────────────────────────────────────────────────────────
+// Dynamic import with error handling
+let PHASES, RATING_LABELS, ARRIVAL_CRITERIA, WEEKS;
+
+async function loadData() {
+  try {
+    const mod = await import('./data.js');
+    PHASES = mod.PHASES;
+    RATING_LABELS = mod.RATING_LABELS;
+    ARRIVAL_CRITERIA = mod.ARRIVAL_CRITERIA;
+    WEEKS = mod.WEEKS;
+    console.log('[Kochplan] data.js loaded:', WEEKS.length, 'weeks');
+  } catch (e) {
+    console.error('[Kochplan] Failed to load data.js:', e);
+    // Fallback: try loading from same origin with explicit path
+    throw new Error('data.js konnte nicht geladen werden: ' + e.message);
+  }
+}
 
 // ─── FIREBASE CONFIG ────────────────────────────────────────────────────
-const firebaseConfig = {
+// !! ERSETZE DIESE WERTE mit deiner eigenen Firebase-Konfiguration !!
+// Siehe SETUP.md für Anleitung
+const FIREBASE_CONFIG = {
   apiKey: "AIzaSyAAXAi2P8Q0Batkz_zw9hbgWg6TjP4v_QA",
   authDomain: "michelin-ba03a.firebaseapp.com",
   projectId: "michelin-ba03a",
@@ -17,24 +38,43 @@ let app, auth, db, currentUser = null;
 let unsubscribeSnapshot = null;
 
 async function initFirebase() {
-  const { initializeApp } = await import('https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js');
-  const { getAuth, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged } =
-    await import('https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js');
+  const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+  const { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, GoogleAuthProvider, onAuthStateChanged } =
+    await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
   const { getFirestore, doc, setDoc, onSnapshot } =
-    await import('https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js');
+    await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
   app = initializeApp(FIREBASE_CONFIG);
   auth = getAuth(app);
   db = getFirestore(app);
 
-  // Expose for use in app
-  window._fb = { auth, db, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged, doc, setDoc, onSnapshot };
+  // Store references directly — no window._fb indirection
+  initFirebase.ready = true;
+  initFirebase.auth = auth;
+  initFirebase.db = db;
+  initFirebase.signInWithPopup = signInWithPopup;
+  initFirebase.signInWithRedirect = signInWithRedirect;
+  initFirebase.signOut = signOut;
+  initFirebase.GoogleAuthProvider = GoogleAuthProvider;
+  initFirebase.onAuthStateChanged = onAuthStateChanged;
+  initFirebase.doc = doc;
+  initFirebase.setDoc = setDoc;
+  initFirebase.onSnapshot = onSnapshot;
+
+  // Handle redirect result (fires after returning from Google login page)
+  try {
+    await getRedirectResult(auth);
+  } catch (e) {
+    console.error('Redirect result error:', e);
+  }
 }
+initFirebase.ready = false;
 
 // ─── STATE ──────────────────────────────────────────────────────────────
 let state = {
   user: null,
   loading: true,
+  bootError: null,
   tab: 'home',
   phaseFilter: 0,
   statusFilter: 'all',
@@ -55,14 +95,14 @@ function setState(patch) {
 
 // ─── FIRESTORE SYNC ─────────────────────────────────────────────────────
 function userDocRef() {
-  return window._fb.doc(window._fb.db, 'users', currentUser.uid);
+  return initFirebase.doc(initFirebase.db, 'users', currentUser.uid);
 }
 
 async function saveToFirestore() {
   if (!currentUser) return;
   setState({ syncStatus: 'saving' });
   try {
-    await window._fb.setDoc(userDocRef(), {
+    await initFirebase.setDoc(userDocRef(), {
       userData: state.userData,
       currentWeek: state.currentWeek,
       updatedAt: new Date().toISOString(),
@@ -81,7 +121,7 @@ function debouncedSave() {
 
 function listenToFirestore() {
   if (unsubscribeSnapshot) unsubscribeSnapshot();
-  unsubscribeSnapshot = window._fb.onSnapshot(userDocRef(), (snap) => {
+  unsubscribeSnapshot = initFirebase.onSnapshot(userDocRef(), (snap) => {
     if (snap.exists()) {
       const d = snap.data();
       // Only update if data is different (avoid loop)
@@ -211,17 +251,38 @@ function render() {
   if (!state.user) {
     root.innerHTML = `
       <div class="login-screen">
-        <div class="login-logo"><svg viewBox="0 0 24 24" width="48" height="48"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="#ef4444"/></svg></div>
+        <div class="login-logo">🔪</div>
         <div class="login-title">Kochen auf<br><em>Michelin-Stern-Niveau</em></div>
         <p class="login-sub">208-Wochen-Studienplan. Anmelden, um deinen Fortschritt zu synchronisieren.</p>
         <button class="login-btn" id="login-btn">${icons.google} Mit Google anmelden</button>
+        <div id="login-error" class="login-error">${state.bootError ? 'Firebase-Fehler: ' + esc(state.bootError) : ''}</div>
       </div>`;
     document.getElementById('login-btn')?.addEventListener('click', async () => {
+      const errorEl = document.getElementById('login-error');
+
+      // Check if Firebase loaded successfully
+      if (!initFirebase.ready) {
+        errorEl.textContent = 'Firebase konnte nicht geladen werden. Prüfe deine FIREBASE_CONFIG in app.js und lade die Seite neu.';
+        return;
+      }
+
       try {
-        const provider = new window._fb.GoogleAuthProvider();
-        await window._fb.signInWithPopup(window._fb.auth, provider);
+        errorEl.textContent = 'Anmeldung läuft…';
+        const provider = new initFirebase.GoogleAuthProvider();
+        // Try popup first (works on desktop), fall back to redirect (works on mobile Safari)
+        try {
+          await initFirebase.signInWithPopup(initFirebase.auth, provider);
+        } catch (popupErr) {
+          if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user' || popupErr.code === 'auth/cancelled-popup-request') {
+            errorEl.textContent = 'Weiterleitung zu Google…';
+            await initFirebase.signInWithRedirect(initFirebase.auth, provider);
+          } else {
+            throw popupErr;
+          }
+        }
       } catch (e) {
         console.error('Login error:', e);
+        errorEl.textContent = 'Fehler: ' + (e.message || e.code || 'Unbekannter Fehler');
       }
     });
     return;
@@ -239,7 +300,7 @@ function render() {
       <div class="hdr">
         <div class="hdr-top">
           <div>
-            <div class="hdr-label"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-1px;margin-right:2px"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="#ef4444"/></svg> 4-Jahres-Studienplan</div>
+            <div class="hdr-label">🔪 4-Jahres-Studienplan</div>
             <h1>Kochen auf<br><em>Michelin-Stern-Niveau</em></h1>
           </div>
           <div class="user-pill" id="user-pill" title="Abmelden">
@@ -434,7 +495,7 @@ function bindEvents() {
   document.getElementById('user-pill')?.addEventListener('click', async () => {
     if (confirm('Abmelden?')) {
       if (unsubscribeSnapshot) unsubscribeSnapshot();
-      await window._fb.signOut(window._fb.auth);
+      await initFirebase.signOut(initFirebase.auth);
     }
   });
 
@@ -538,8 +599,9 @@ function esc(str) {
 // ─── BOOT ───────────────────────────────────────────────────────────────
 async function boot() {
   try {
+    await loadData();
     await initFirebase();
-    window._fb.onAuthStateChanged(window._fb.auth, (user) => {
+    initFirebase.onAuthStateChanged(initFirebase.auth, (user) => {
       currentUser = user;
       state.user = user;
       state.loading = false;
@@ -555,8 +617,10 @@ async function boot() {
   } catch (e) {
     console.error('Boot error:', e);
     state.loading = false;
+    state.bootError = e.message || String(e);
     render();
   }
 }
 
 boot();
+
