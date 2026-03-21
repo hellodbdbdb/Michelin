@@ -525,19 +525,7 @@ function render() {
           if (w.source) html += `<div class="wc-field"><div class="wc-field-label">Quelle</div><div class="wc-field-val">${esc(w.source)}</div></div>`;
           if (w.technique) html += `<div class="wc-field"><div class="wc-field-label">Schlüsseltechnik</div><div class="wc-field-val">${esc(w.technique)}</div></div>`;
           if (w.details) html += `<div class="wc-field"><div class="wc-field-label">Technik-Details</div><div class="wc-field-val wc-details">${esc(w.details)}</div></div>`;
-          if (w.links && w.links.length > 0) {
-            html += `<div class="wc-field"><div class="wc-field-label">Ressourcen & Links</div><div class="wc-links">`;
-            if (w.resource) html += `<div class="wc-resource">${esc(w.resource)}</div>`;
-            w.links.forEach((link, i) => {
-              const isYT = link.includes('youtube.com') || link.includes('youtu.be');
-              const isSE = link.includes('seriouseats.com');
-              const label = isYT ? `▶ Video ${w.links.filter((l,j) => j<=i && (l.includes('youtube') || l.includes('youtu.be'))).length}` : isSE ? '📖 Serious Eats' : '🔗 Link';
-              html += `<a href="${esc(link)}" target="_blank" rel="noopener" class="wc-link ${isYT ? 'yt' : isSE ? 'se' : ''}">${label}</a>`;
-            });
-            html += `</div></div>`;
-          } else if (w.resource) {
-            html += `<div class="wc-field"><div class="wc-field-label">Ressource</div><div class="wc-field-val">${esc(w.resource)}</div></div>`;
-          }
+          if (w.resource) html += `<div class="wc-field"><div class="wc-field-label">Ressource</div><div class="wc-field-val">${esc(w.resource)}</div></div>`;
           if (w.check) html += `<div class="wc-field"><div class="wc-field-label">Selbstprüfung</div><div class="wc-field-val" style="color:var(--amber);font-style:italic">${esc(w.check)}</div></div>`;
 
           // Rating
