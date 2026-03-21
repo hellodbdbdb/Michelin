@@ -1,10 +1,10 @@
 // ── app.js ── Firebase Auth + Firestore Sync + Full UI ────────────────
-// VERSION: 2025-03-15-v4
-console.log('[Kochplan] app.js v4 loaded');
+// VERSION: 2025-03-21-v5
+console.log('[Kochplan] app.js v5 loaded');
 
 // ─── LOAD DATA ──────────────────────────────────────────────────────────
 // Dynamic import with error handling
-let PHASES, RATING_LABELS, ARRIVAL_CRITERIA, WEEKS;
+let PHASES, RATING_LABELS, ARRIVAL_CRITERIA, WEEKS, BOOKS;
 
 async function loadData() {
   try {
@@ -13,7 +13,8 @@ async function loadData() {
     RATING_LABELS = mod.RATING_LABELS;
     ARRIVAL_CRITERIA = mod.ARRIVAL_CRITERIA;
     WEEKS = mod.WEEKS;
-    console.log('[Kochplan] data.js loaded:', WEEKS.length, 'weeks');
+    BOOKS = mod.BOOKS || [];
+    console.log('[Kochplan] data.js loaded:', WEEKS.length, 'weeks,', BOOKS.length, 'books');
   } catch (e) {
     console.error('[Kochplan] Failed to load data.js:', e);
     // Fallback: try loading from same origin with explicit path
@@ -185,7 +186,7 @@ function getFilteredWeeks() {
     if (state.statusFilter === 'repeat' && !ud.repeat) return false;
     if (state.search) {
       const s = state.search.toLowerCase();
-      const fields = [w.theme, w.dish, w.source, w.technique, w.check, ud.notes || ''].join(' ').toLowerCase();
+      const fields = [w.theme, w.dish, w.source, w.technique, w.check, w.desc || '', w.details || '', w.resource || '', ud.notes || ''].join(' ').toLowerCase();
       if (!fields.includes(s)) return false;
     }
     return true;
@@ -251,7 +252,7 @@ function render() {
   if (!state.user) {
     root.innerHTML = `
       <div class="login-screen">
-        <div class="login-logo">🔪</div>
+        <div class="login-logo"><svg viewBox="0 0 100 100" width="64" height="64"><polygon points="50,8 61,38 94,38 67,58 78,90 50,70 22,90 33,58 6,38 39,38" fill="#ef4444"/></svg></div>
         <div class="login-title">Kochen auf<br><em>Michelin-Stern-Niveau</em></div>
         <p class="login-sub">208-Wochen-Studienplan. Anmelden, um deinen Fortschritt zu synchronisieren.</p>
         <button class="login-btn" id="login-btn">${icons.google} Mit Google anmelden</button>
@@ -300,7 +301,7 @@ function render() {
       <div class="hdr">
         <div class="hdr-top">
           <div>
-            <div class="hdr-label">🔪 4-Jahres-Studienplan</div>
+            <div class="hdr-label"><svg viewBox="0 0 100 100" width="14" height="14" style="vertical-align:-1px;margin-right:2px"><polygon points="50,8 61,38 94,38 67,58 78,90 50,70 22,90 33,58 6,38 39,38" fill="#ef4444"/></svg> 4-Jahres-Studienplan</div>
             <h1>Kochen auf<br><em>Michelin-Stern-Niveau</em></h1>
           </div>
           <div class="user-pill" id="user-pill" title="Abmelden">
@@ -409,9 +410,24 @@ function render() {
 
         if (isOpen) {
           html += `<div class="wc-body">`;
+          if (w.desc) html += `<div class="wc-desc">${esc(w.desc)}</div>`;
           if (w.dish) html += `<div class="wc-field"><div class="wc-field-label">Gericht</div><div class="wc-field-val dish">${esc(w.dish)}${w.ownBook ? '<span class="wc-own-book">📚 Eigenes Buch</span>' : ''}</div></div>`;
           if (w.source) html += `<div class="wc-field"><div class="wc-field-label">Quelle</div><div class="wc-field-val">${esc(w.source)}</div></div>`;
           if (w.technique) html += `<div class="wc-field"><div class="wc-field-label">Schlüsseltechnik</div><div class="wc-field-val">${esc(w.technique)}</div></div>`;
+          if (w.details) html += `<div class="wc-field"><div class="wc-field-label">Technik-Details</div><div class="wc-field-val wc-details">${esc(w.details)}</div></div>`;
+          if (w.links && w.links.length > 0) {
+            html += `<div class="wc-field"><div class="wc-field-label">Ressourcen & Links</div><div class="wc-links">`;
+            if (w.resource) html += `<div class="wc-resource">${esc(w.resource)}</div>`;
+            w.links.forEach((link, i) => {
+              const isYT = link.includes('youtube.com') || link.includes('youtu.be');
+              const isSE = link.includes('seriouseats.com');
+              const label = isYT ? `▶ Video ${w.links.filter((l,j) => j<=i && (l.includes('youtube') || l.includes('youtu.be'))).length}` : isSE ? '📖 Serious Eats' : '🔗 Link';
+              html += `<a href="${esc(link)}" target="_blank" rel="noopener" class="wc-link ${isYT ? 'yt' : isSE ? 'se' : ''}">${label}</a>`;
+            });
+            html += `</div></div>`;
+          } else if (w.resource) {
+            html += `<div class="wc-field"><div class="wc-field-label">Ressource</div><div class="wc-field-val">${esc(w.resource)}</div></div>`;
+          }
           if (w.check) html += `<div class="wc-field"><div class="wc-field-label">Selbstprüfung</div><div class="wc-field-val" style="color:var(--amber);font-style:italic">${esc(w.check)}</div></div>`;
 
           // Rating

@@ -203,6 +203,33 @@ body {
   letter-spacing:0.5px; text-transform:uppercase; vertical-align:middle;
 }
 
+/* ── WEEK DESC ── */
+.wc-desc {
+  font-size:14px; color:var(--text-m); line-height:1.6;
+  margin-bottom:14px; padding:10px 14px;
+  background:var(--surface2); border-radius:10px;
+  border-left:3px solid var(--accent);
+}
+
+/* ── TECHNIK-DETAILS ── */
+.wc-details { font-size:14px; line-height:1.65; color:var(--text-m); }
+
+/* ── LINKS ── */
+.wc-links { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+.wc-resource { width:100%; font-size:13px; color:var(--text-d); margin-bottom:4px; line-height:1.45; }
+.wc-link {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:6px 12px; border-radius:8px;
+  font-size:13px; font-weight:500; text-decoration:none;
+  border:1px solid var(--border); background:var(--surface2);
+  color:var(--text-m); transition:all .15s;
+}
+.wc-link:hover { border-color:var(--accent); color:var(--accent); }
+.wc-link.yt { border-color:rgba(239,68,68,0.3); color:var(--red); }
+.wc-link.yt:hover { background:rgba(239,68,68,0.08); border-color:var(--red); }
+.wc-link.se { border-color:rgba(245,158,11,0.3); color:var(--amber); }
+.wc-link.se:hover { background:rgba(245,158,11,0.08); border-color:var(--amber); }
+
 /* ── RATING SELECTOR ── */
 .rating-sel { display:flex; gap:8px; margin-top:8px; }
 .rating-btn {
