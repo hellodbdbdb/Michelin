@@ -299,9 +299,10 @@ body {
 .assess h2 { font-family:'DM Serif Display',serif; font-size:1.5rem; font-weight:400; color:#fff; margin-bottom:18px; }
 .assess-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; margin-bottom:14px; }
 .assess-card h3 { font-size:15px; font-weight:600; color:var(--text); margin-bottom:10px; }
-.scale-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
-.scale-num { font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; min-width:26px; text-align:center; }
+.scale-row { display:flex; align-items:flex-start; gap:10px; margin-bottom:12px; }
+.scale-num { font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; min-width:26px; text-align:center; padding-top:2px; }
 .scale-desc { font-size:14px; color:var(--text-m); line-height:1.45; }
+.scale-detail { font-weight:400; font-size:13px; color:var(--text-d); }
 .milestone-item { display:flex; align-items:flex-start; gap:8px; font-size:14px; color:var(--text-m); line-height:1.55; margin-bottom:8px; }
 .milestone-item::before { content:'→'; color:var(--accent); flex-shrink:0; margin-top:1px; }
 .phase-thresh { font-size:13px; color:var(--text-d); margin-top:10px; line-height:1.65; }

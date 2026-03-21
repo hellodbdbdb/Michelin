@@ -8,12 +8,12 @@ export const PHASES = [
 ];
 
 export const RATING_LABELS = {
-  0: { label:"–", desc:"Noch nicht bewertet", color:"#4a5270" },
-  1: { label:"1", desc:"Sehr gut", color:"#818cf8" },
-  2: { label:"2", desc:"Gut", color:"#22c55e" },
-  3: { label:"3", desc:"Befriedigend", color:"#eab308" },
-  4: { label:"4", desc:"Genügend", color:"#f97316" },
-  5: { label:"5", desc:"Nicht genügend", color:"#ef4444" },
+  0: { label:"–", desc:"Noch nicht bewertet", detail:"", color:"#4a5270" },
+  1: { label:"1", desc:"Meisterhaft", detail:"Du könntest es jemandem beibringen und es jedes Mal perfekt reproduzieren.", color:"#818cf8" },
+  2: { label:"2", desc:"Sehr gut", detail:"Du könntest es für Gäste servieren und wärst stolz darauf.", color:"#22c55e" },
+  3: { label:"3", desc:"Solide", detail:"Das Gericht war gut, die Technik sitzt, aber noch nicht automatisch.", color:"#eab308" },
+  4: { label:"4", desc:"Mit Schwierigkeiten", detail:"Das Gericht war essbar, aber die Technik war unsicher.", color:"#f97316" },
+  5: { label:"5", desc:"Nicht geschafft", detail:"Das Gericht ist misslungen oder du konntest die Technik nicht anwenden.", color:"#ef4444" },
 };
 
 export const ARRIVAL_CRITERIA = [

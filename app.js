@@ -8,7 +8,7 @@ let PHASES, RATING_LABELS, ARRIVAL_CRITERIA, WEEKS, BOOKS;
 
 async function loadData() {
   try {
-    const mod = await import('./data.js?v=6');
+    const mod = await import('./data.js?v=7');
     PHASES = mod.PHASES;
     RATING_LABELS = mod.RATING_LABELS;
     ARRIVAL_CRITERIA = mod.ARRIVAL_CRITERIA;
@@ -536,7 +536,7 @@ function render() {
             html += `<button class="rating-btn ${active ? 'active' : ''}" style="${style}" data-rate="${w.w}-${r}">${r}</button>`;
           }
           html += `</div>`;
-          if ((ud.rating || 0) > 0) html += `<div class="rating-desc" style="color:${RATING_LABELS[ud.rating].color}">${RATING_LABELS[ud.rating].desc}</div>`;
+          if ((ud.rating || 0) > 0) html += `<div class="rating-desc" style="color:${RATING_LABELS[ud.rating].color}">${RATING_LABELS[ud.rating].desc} — ${RATING_LABELS[ud.rating].detail}</div>`;
           html += `</div>`;
 
           // Done toggle
@@ -563,7 +563,7 @@ function render() {
 
     html += `<div class="assess-card"><h3>Bewertungsskala</h3>`;
     for (let r = 1; r <= 5; r++) {
-      html += `<div class="scale-row"><span class="scale-num" style="color:${RATING_LABELS[r].color}">${r}</span><span class="scale-desc"><strong>${RATING_LABELS[r].desc}</strong></span></div>`;
+      html += `<div class="scale-row"><span class="scale-num" style="color:${RATING_LABELS[r].color}">${r}</span><span class="scale-desc"><strong>${RATING_LABELS[r].desc}</strong><br><span class="scale-detail">${RATING_LABELS[r].detail}</span></span></div>`;
     }
     html += `</div>`;
 
