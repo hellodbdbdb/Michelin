@@ -174,8 +174,7 @@ function listenToFirestore() {
         state.currentWeek = d.currentWeek || 1;
         state.syncStatus = 'ok';
         // Don't re-render if user is typing in a textarea
-        const active = document.activeElement;
-        if (active && active.tagName === 'TEXTAREA') {
+        if (state._notesActive) {
           updateSyncBadge();
         } else {
           render();
@@ -729,8 +728,10 @@ function bindEvents() {
     });
   });
 
-  // Notes (debounced)
+  // Notes (debounced, no re-render to keep focus on iOS Safari)
   document.querySelectorAll('[data-notes]').forEach(el => {
+    el.addEventListener('focus', () => { state._notesActive = true; });
+    el.addEventListener('blur', () => { state._notesActive = false; });
     el.addEventListener('input', (e) => {
       const w = parseInt(el.dataset.notes);
       state.userData = { ...state.userData, [w]: { ...(state.userData[w] || {}), notes: e.target.value } };
