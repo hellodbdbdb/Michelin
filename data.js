@@ -9,11 +9,11 @@ export const PHASES = [
 
 export const RATING_LABELS = {
   0: { label:"–", desc:"Noch nicht bewertet", color:"#4a5270" },
-  1: { label:"1", desc:"Nicht geschafft", color:"#ef4444" },
-  2: { label:"2", desc:"Mit Schwierigkeiten", color:"#f97316" },
-  3: { label:"3", desc:"Solide", color:"#eab308" },
-  4: { label:"4", desc:"Stolz!", color:"#22c55e" },
-  5: { label:"5", desc:"Meisterhaft", color:"#818cf8" },
+  1: { label:"1", desc:"Sehr gut", color:"#818cf8" },
+  2: { label:"2", desc:"Gut", color:"#22c55e" },
+  3: { label:"3", desc:"Befriedigend", color:"#eab308" },
+  4: { label:"4", desc:"Genügend", color:"#f97316" },
+  5: { label:"5", desc:"Nicht genügend", color:"#ef4444" },
 };
 
 export const ARRIVAL_CRITERIA = [

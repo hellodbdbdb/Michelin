@@ -1,5 +1,5 @@
 // ── app.js ── Firebase Auth + Firestore Sync + Full UI ────────────────
-// VERSION: 2025-03-21-v5
+// VERSION: 2025-03-21-v6
 console.log('[Kochplan] app.js v5 loaded');
 
 // ─── LOAD DATA ──────────────────────────────────────────────────────────
@@ -8,7 +8,7 @@ let PHASES, RATING_LABELS, ARRIVAL_CRITERIA, WEEKS, BOOKS;
 
 async function loadData() {
   try {
-    const mod = await import('./data.js');
+    const mod = await import('./data.js?v=6');
     PHASES = mod.PHASES;
     RATING_LABELS = mod.RATING_LABELS;
     ARRIVAL_CRITERIA = mod.ARRIVAL_CRITERIA;
@@ -109,6 +109,7 @@ function startDemoMode() {
   state.demoMode = true;
   state.syncStatus = 'ok';
   currentUser = null; // no Firestore
+  migrateRatings();
   render();
 }
 
@@ -173,6 +174,7 @@ function listenToFirestore() {
         state.userData = d.userData || {};
         state.currentWeek = d.currentWeek || 1;
         state.syncStatus = 'ok';
+        migrateRatings();
         // Don't re-render if user is typing in a textarea
         if (state._notesActive) {
           updateSyncBadge();
@@ -186,6 +188,22 @@ function listenToFirestore() {
     state.syncStatus = 'error';
     updateSyncBadge();
   });
+}
+
+// ─── RATING MIGRATION (old 1-5 best → new 1-5 Schulnoten) ──────────────
+function migrateRatings() {
+  const MIGRATED_KEY = 'kp-ratings-migrated';
+  if (localStorage.getItem(MIGRATED_KEY)) return;
+  const flip = { 1:5, 2:4, 3:3, 4:2, 5:1 };
+  let changed = false;
+  for (const [w, d] of Object.entries(state.userData)) {
+    if (d.rating && flip[d.rating] !== undefined) {
+      d.rating = flip[d.rating];
+      changed = true;
+    }
+  }
+  if (changed) debouncedSave();
+  localStorage.setItem(MIGRATED_KEY, '1');
 }
 
 // ─── DATA HELPERS ───────────────────────────────────────────────────────
@@ -523,7 +541,7 @@ function render() {
           if (w.check) html += `<div class="wc-field"><div class="wc-field-label">Selbstprüfung</div><div class="wc-field-val" style="color:var(--amber);font-style:italic">${esc(w.check)}</div></div>`;
 
           // Rating
-          html += `<div class="wc-field"><div class="wc-field-label">Bewertung (1–5)</div><div class="rating-sel">`;
+          html += `<div class="wc-field"><div class="wc-field-label">Schulnote (1–5)</div><div class="rating-sel">`;
           for (let r = 1; r <= 5; r++) {
             const active = ud.rating === r;
             const style = active ? `border-color:${RATING_LABELS[r].color};color:${RATING_LABELS[r].color};background:${RATING_LABELS[r].color}20` : '';
@@ -566,7 +584,7 @@ function render() {
       const a = phaseAvg(p.id);
       html += `<div class="avg-item"><div class="avg-num" style="color:${p.color}">${a || '–'}</div><div class="avg-label">Phase ${p.id}</div></div>`;
     });
-    html += `</div><div class="phase-thresh">Phase 1→2: Ø ≥ 3,0 · Phase 2→3: Ø ≥ 3,5 · Phase 3→4: Ø ≥ 3,5 · „Ankunft": Ø ≥ 4,0</div></div>`;
+    html += `</div><div class="phase-thresh">Phase 1→2: Ø ≤ 3,0 · Phase 2→3: Ø ≤ 2,5 · Phase 3→4: Ø ≤ 2,5 · „Ankunft": Ø ≤ 2,0</div></div>`;
 
     html += `<div class="assess-card"><h3>Finale „Ankunft"-Kriterien</h3>`;
     ARRIVAL_CRITERIA.forEach(c => { html += `<div class="milestone-item">${esc(c)}</div>`; });
