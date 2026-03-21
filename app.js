@@ -127,18 +127,30 @@ function userDocRef() {
 
 async function saveToFirestore() {
   if (!currentUser) return;
-  setState({ syncStatus: 'saving' });
+  state.syncStatus = 'saving';
+  updateSyncBadge();
   try {
     await initFirebase.setDoc(userDocRef(), {
       userData: state.userData,
       currentWeek: state.currentWeek,
       updatedAt: new Date().toISOString(),
     }, { merge: true });
-    setState({ syncStatus: 'ok' });
+    state.syncStatus = 'ok';
+    updateSyncBadge();
   } catch (e) {
     console.error('Save error:', e);
-    setState({ syncStatus: 'error' });
+    state.syncStatus = 'error';
+    updateSyncBadge();
   }
+}
+
+// Update sync badge without full re-render
+function updateSyncBadge() {
+  const el = document.querySelector('.sync-badge');
+  if (!el) return;
+  const labels = { ok:'Gespeichert', saving:'Speichert…', error:'Fehler!' };
+  el.textContent = labels[state.syncStatus] || '';
+  el.className = 'sync-badge sync-' + state.syncStatus;
 }
 
 function debouncedSave() {
@@ -155,19 +167,25 @@ function listenToFirestore() {
   unsubscribeSnapshot = initFirebase.onSnapshot(userDocRef(), (snap) => {
     if (snap.exists()) {
       const d = snap.data();
-      // Only update if data is different (avoid loop)
       const incoming = JSON.stringify(d.userData || {});
       const current = JSON.stringify(state.userData);
       if (incoming !== current) {
         state.userData = d.userData || {};
         state.currentWeek = d.currentWeek || 1;
         state.syncStatus = 'ok';
-        render();
+        // Don't re-render if user is typing in a textarea
+        const active = document.activeElement;
+        if (active && active.tagName === 'TEXTAREA') {
+          updateSyncBadge();
+        } else {
+          render();
+        }
       }
     }
   }, (err) => {
     console.error('Snapshot error:', err);
-    setState({ syncStatus: 'error' });
+    state.syncStatus = 'error';
+    updateSyncBadge();
   });
 }
 
