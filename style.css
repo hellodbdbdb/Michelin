@@ -58,6 +58,8 @@ body {
   font-size:17px; font-weight:500; cursor:pointer; transition:all .15s;
 }
 .login-btn:hover { border-color:var(--accent); background:var(--surface2); }
+.login-btn.demo { font-size:14px; padding:12px 28px; color:var(--text-d); border-color:transparent; background:transparent; margin-top:8px; }
+.login-btn.demo:hover { color:var(--text-m); border-color:var(--border); background:var(--surface); }
 .login-btn svg { width:22px; height:22px; }
 .login-error { color:var(--red); font-size:14px; margin-top:16px; max-width:320px; line-height:1.4; }
 
