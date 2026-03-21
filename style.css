@@ -270,7 +270,8 @@ body {
   width:100%; min-height:70px; padding:12px 14px;
   background:var(--surface2); border:1px solid var(--border);
   border-radius:10px; color:var(--text); font-family:inherit;
-  font-size:15px; line-height:1.55; resize:vertical; outline:none; transition:border-color .15s;
+  font-size:16px; line-height:1.55; resize:vertical; outline:none; transition:border-color .15s;
+  -webkit-appearance:none; touch-action:manipulation;
 }
 .notes-area:focus { border-color:var(--accent); }
 .notes-area::placeholder { color:var(--text-d); }

@@ -327,6 +327,8 @@ window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', ()
 
 // ─── RENDER ─────────────────────────────────────────────────────────────
 function render() {
+  // Never re-render while user is typing in a textarea (iOS Safari loses focus)
+  if (state._notesActive) return;
   const root = document.getElementById('app');
   if (!root) return;
 
