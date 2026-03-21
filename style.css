@@ -17,7 +17,7 @@
   --amber: #f59e0b;
   --red: #ef4444;
   --orange: #f97316;
-  --accent: #818cf8;
+  --accent: #D3072B;
 }
 
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -107,6 +107,10 @@ body {
   flex-shrink:0;
 }
 .user-pill img { width:24px; height:24px; border-radius:50%; }
+.user-avatar-fallback {
+  width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:var(--accent); color:#fff; font-size:13px; font-weight:600;
+}
 .user-pill:hover { border-color:var(--accent); }
 
 /* ── SYNC INDICATOR ── */
@@ -326,6 +330,97 @@ body {
 
 /* ── EMPTY STATE ── */
 .empty-state { text-align:center; padding:48px 20px; color:var(--text-d); font-size:15px; }
+
+/* ── SETTINGS TAB ── */
+.settings { padding:22px 20px; }
+.settings h2 { font-family:'DM Serif Display',serif; font-size:1.5rem; font-weight:400; color:#fff; margin-bottom:18px; }
+.settings-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; margin-bottom:14px; }
+.settings-label { font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-d); margin-bottom:12px; }
+.settings-row { display:flex; gap:8px; }
+.settings-option {
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;
+  padding:14px 8px; border-radius:10px; border:1.5px solid var(--border);
+  background:var(--surface2); color:var(--text-m); font-family:inherit;
+  font-size:13px; font-weight:500; cursor:pointer; transition:all .15s;
+}
+.settings-option:hover { border-color:var(--text-d); }
+.settings-option.active { border-color:var(--accent); color:var(--accent); background:rgba(129,140,248,0.08); }
+.settings-icon { font-size:22px; }
+.settings-size-preview { font-family:'DM Serif Display',serif; color:var(--text); }
+.settings-size-preview.size-small { font-size:16px; }
+.settings-size-preview.size-medium { font-size:22px; }
+.settings-size-preview.size-large { font-size:28px; }
+.settings-logout {
+  width:100%; padding:14px; border-radius:10px; border:1px solid rgba(239,68,68,0.3);
+  background:rgba(239,68,68,0.06); color:var(--red); font-family:inherit;
+  font-size:15px; font-weight:500; cursor:pointer; transition:all .15s;
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+}
+.settings-logout svg { width:20px; height:20px; }
+.settings-logout:hover { background:rgba(239,68,68,0.12); border-color:var(--red); }
+
+/* ── LIGHT THEME ── */
+[data-theme="day"] {
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface2: #f0f0f3;
+  --surface3: #e5e5ea;
+  --border: #d1d1d6;
+  --text: #1c1c1e;
+  --text-m: #636366;
+  --text-d: #aeaeb2;
+  --green: #34c759;
+  --blue: #007aff;
+  --purple: #af52de;
+  --amber: #ff9500;
+  --red: #ff3b30;
+  --orange: #ff6723;
+  --accent: #D3072B;
+}
+[data-theme="day"] body { background:var(--bg); color:var(--text); }
+[data-theme="day"] .hdr h1, [data-theme="day"] .cb-theme,
+[data-theme="day"] .settings h2, [data-theme="day"] .assess h2 { color:var(--text); }
+[data-theme="day"] .login-title { color:var(--text); }
+[data-theme="day"] .nav { background:rgba(245,245,247,0.92); }
+[data-theme="day"] .login-screen { background:var(--bg); }
+[data-theme="day"] .loading-screen { background:var(--bg); }
+
+/* ── TYPE SIZE: MEDIUM ── */
+[data-size="medium"] body { font-size:19px; }
+[data-size="medium"] .wc-theme { font-size:17px; }
+[data-size="medium"] .wc-desc { font-size:16px; }
+[data-size="medium"] .wc-details { font-size:16px; }
+[data-size="medium"] .wc-field-val { font-size:17px; }
+[data-size="medium"] .wc-field-label { font-size:13px; }
+[data-size="medium"] .hdr h1 { font-size:2rem; }
+[data-size="medium"] .cb-theme { font-size:19px; }
+[data-size="medium"] .cb-sub { font-size:16px; }
+[data-size="medium"] .notes-area { font-size:17px; }
+[data-size="medium"] .search-input { font-size:18px; }
+[data-size="medium"] .prog-label { font-size:16px; }
+[data-size="medium"] .prog-stat { font-size:15px; }
+[data-size="medium"] .settings-option { font-size:15px; }
+[data-size="medium"] .nav-btn { font-size:13px; }
+
+/* ── TYPE SIZE: LARGE ── */
+[data-size="large"] body { font-size:21px; }
+[data-size="large"] .wc-theme { font-size:19px; }
+[data-size="large"] .wc-desc { font-size:18px; }
+[data-size="large"] .wc-details { font-size:18px; }
+[data-size="large"] .wc-field-val { font-size:19px; }
+[data-size="large"] .wc-field-label { font-size:14px; }
+[data-size="large"] .hdr h1 { font-size:2.2rem; }
+[data-size="large"] .cb-theme { font-size:21px; }
+[data-size="large"] .cb-sub { font-size:18px; }
+[data-size="large"] .notes-area { font-size:19px; }
+[data-size="large"] .search-input { font-size:20px; }
+[data-size="large"] .prog-label { font-size:18px; }
+[data-size="large"] .prog-stat { font-size:17px; }
+[data-size="large"] .settings-option { font-size:17px; }
+[data-size="large"] .nav-btn { font-size:14px; }
+[data-size="large"] .phase-pill { font-size:16px; padding:10px 18px; }
+[data-size="large"] .filter-chip { font-size:15px; padding:8px 14px; }
+[data-size="large"] .rating-btn { width:48px; height:48px; font-size:19px; }
 
 /* ── RESPONSIVE ── */
 @media (min-width:501px) {
