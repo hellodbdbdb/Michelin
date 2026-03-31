@@ -87,6 +87,7 @@ let state = {
   currentWeek: 1,
   userData: {},  // { [weekNum]: { rating, done, notes, repeat } }
   syncStatus: 'ok', // ok | saving | error
+  homeExpanded: false,
   authReady: false,
   demoMode: false,
   theme: localStorage.getItem('kp-theme') || 'auto', // day | night | auto
@@ -216,9 +217,19 @@ function updateWeek(weekNum, field, value) {
     ...state.userData,
     [weekNum]: { ...(state.userData[weekNum] || {}), [field]: value }
   };
-  // Try targeted update on plan tab; fall back to full render
+  // Try targeted update; fall back to full render
   if (state.tab === 'plan' && updateCardHeader(weekNum)) {
-    // Card updated in-place, no full re-render needed
+    // Card updated in-place on plan tab
+  } else if (state.tab === 'home' && state.homeExpanded && weekNum === state.currentWeek) {
+    // Refresh expanded body on home banner
+    const banner = document.getElementById('home-current');
+    if (banner) {
+      const body = banner.querySelector('.wc-body');
+      if (body) body.remove();
+      banner.insertAdjacentHTML('beforeend', renderWeekBodyHTML(weeksMap[weekNum]));
+      const notesEl = banner.querySelector('[data-notes]');
+      if (notesEl) bindNotesOn(notesEl);
+    } else { render(); }
   } else {
     render();
   }
@@ -634,11 +645,18 @@ function render() {
       </div>`;
 
     if (cw) {
+      const hOpen = state.homeExpanded;
       html += `
-        <div class="current-banner" id="goto-current">
-          <div class="cb-label">▶ Diese Woche</div>
-          <div class="cb-theme">${esc(cw.theme)}</div>
-          ${cw.dish ? `<div class="cb-sub">${esc(cw.dish)}</div>` : ''}
+        <div class="current-banner" id="home-current" data-home-toggle>
+          <div class="cb-top">
+            <div>
+              <div class="cb-label">▶ Diese Woche</div>
+              <div class="cb-theme">${esc(cw.theme)}</div>
+              ${cw.dish ? `<div class="cb-sub">${esc(cw.dish)}</div>` : ''}
+            </div>
+            <span class="wc-chevron cb-chevron ${hOpen ? 'open' : ''}">${icons.chevron}</span>
+          </div>
+          ${hOpen ? renderWeekBodyHTML(cw) : ''}
         </div>`;
     }
 
@@ -870,8 +888,8 @@ function bindEvents() {
       return;
     }
 
-    // data-theme (settings theme buttons)
-    const themeEl = t.closest('[data-theme]');
+    // data-theme (settings theme buttons — use button selector to avoid matching <html data-theme>)
+    const themeEl = t.closest('button[data-theme]');
     if (themeEl) { setTheme(themeEl.dataset.theme); return; }
 
     // data-typesize (settings size buttons)
@@ -892,9 +910,24 @@ function bindEvents() {
       return;
     }
 
-    // goto-current banner
-    if (t.closest('#goto-current')) {
-      setState({ tab: 'plan', expanded: state.currentWeek, phaseFilter: 0, statusFilter: 'all', search: '' });
+    // Home: expand/collapse current week banner
+    if (t.closest('[data-home-toggle]')) {
+      const banner = document.getElementById('home-current');
+      if (!banner) return;
+      state.homeExpanded = !state.homeExpanded;
+      const chevron = banner.querySelector('.cb-chevron');
+      if (state.homeExpanded) {
+        const cw = weeksMap[state.currentWeek];
+        if (!cw) return;
+        banner.insertAdjacentHTML('beforeend', renderWeekBodyHTML(cw));
+        if (chevron) chevron.classList.add('open');
+        const notesEl = banner.querySelector('[data-notes]');
+        if (notesEl) bindNotesOn(notesEl);
+      } else {
+        const body = banner.querySelector('.wc-body');
+        if (body) body.remove();
+        if (chevron) chevron.classList.remove('open');
+      }
       return;
     }
 

@@ -274,10 +274,14 @@ body {
   border-color:rgba(239,68,68,0.3);
   background:linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.03));
 }
+.cb-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.cb-top > div { flex:1; min-width:0; }
+.cb-chevron { flex-shrink:0; margin-top:8px; }
 .cb-label { font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent); margin-bottom:5px; }
 .cb-label.red { color:var(--red); }
 .cb-theme { font-size:17px; font-weight:500; color:#fff; line-height:1.35; }
 .cb-sub { font-size:14px; color:var(--text-m); margin-top:5px; }
+.current-banner .wc-body { margin-top:14px; border-top:1px solid rgba(255,255,255,0.08); padding-top:14px; }
 
 /* ── SET CURRENT WEEK ── */
 .set-week-row { display:flex; align-items:center; gap:8px; padding:10px 20px; margin-bottom:4px; }
@@ -371,6 +375,7 @@ body {
 [data-theme="day"] .hdr h1, [data-theme="day"] .cb-theme,
 [data-theme="day"] .settings h2, [data-theme="day"] .assess h2 { color:var(--text); }
 [data-theme="day"] .login-title { color:var(--text); }
+[data-theme="day"] .current-banner .wc-body { border-top-color:rgba(0,0,0,0.08); }
 [data-theme="day"] .nav { background:rgba(245,245,247,0.92); }
 [data-theme="day"] .login-screen { background:var(--bg); }
 [data-theme="day"] .loading-screen { background:var(--bg); }
