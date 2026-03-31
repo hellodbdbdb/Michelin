@@ -15,6 +15,7 @@ async function loadData() {
     WEEKS = mod.WEEKS;
     BOOKS = mod.BOOKS || [];
     console.log('[Kochplan] data.js loaded:', WEEKS.length, 'weeks,', BOOKS.length, 'books');
+    buildPhaseColorMap();
   } catch (e) {
     console.error('[Kochplan] Failed to load data.js:', e);
     // Fallback: try loading from same origin with explicit path
@@ -91,6 +92,7 @@ let state = {
 };
 
 let saveTimer = null;
+let searchTimer = null;
 
 function setState(patch) {
   Object.assign(state, patch);
@@ -240,6 +242,13 @@ function totalAvg() {
   const rated = WEEKS.filter(w => state.userData[w.w]?.rating > 0);
   if (!rated.length) return null;
   return (rated.reduce((s, w) => s + state.userData[w.w].rating, 0) / rated.length).toFixed(1);
+}
+
+// Pre-computed phase color map (avoids .find() inside render loop)
+let phaseColorMap = {};
+function buildPhaseColorMap() {
+  phaseColorMap = {};
+  if (PHASES) PHASES.forEach(p => { phaseColorMap[p.id] = p.color; });
 }
 
 function getFilteredWeeks() {
@@ -502,7 +511,7 @@ function render() {
         const ud = state.userData[w.w] || {};
         const isOpen = state.expanded === w.w;
         const isCurrent = w.w === state.currentWeek;
-        const pc = PHASES.find(p => p.id === w.phase)?.color || '#818cf8';
+        const pc = phaseColorMap[w.phase] || '#818cf8';
         const ri = RATING_LABELS[ud.rating || 0];
 
         let cls = 'week-card';
@@ -636,23 +645,23 @@ function render() {
   bindEvents();
 }
 
-// ─── EVENT BINDING ──────────────────────────────────────────────────────
-function bindEvents() {
-  // Nav
-  document.querySelectorAll('[data-tab]').forEach(el => {
-    el.addEventListener('click', () => setState({ tab: el.dataset.tab }));
-  });
+// ─── EVENT DELEGATION (attached once, handles all clicks) ───────────────
+let _delegationBound = false;
 
-  // User pill (logout)
-  document.getElementById('user-pill')?.addEventListener('click', async () => {
-    if (confirm('Abmelden?')) {
-      if (state.demoMode) {
-        state.user = null; state.demoMode = false; state.userData = {}; state.currentWeek = 1;
-        render(); return;
-      }
-      if (unsubscribeSnapshot) unsubscribeSnapshot();
-      await initFirebase.signOut(initFirebase.auth);
-    }
+function bindEvents() {
+  // Only bind id-based and input listeners that need re-attachment after innerHTML
+  // Search (debounced)
+  document.getElementById('search-input')?.addEventListener('input', (e) => {
+    const val = e.target.value;
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      state.search = val;
+      render();
+      setTimeout(() => {
+        const inp = document.getElementById('search-input');
+        if (inp) { inp.focus(); inp.selectionStart = inp.selectionEnd = inp.value.length; }
+      }, 0);
+    }, 300);
   });
 
   // Current week input
@@ -660,83 +669,7 @@ function bindEvents() {
     setCurrentWeek(parseInt(e.target.value) || 1);
   });
 
-  // Goto current week
-  document.getElementById('goto-current')?.addEventListener('click', () => {
-    setState({ tab: 'plan', expanded: state.currentWeek, phaseFilter: 0, statusFilter: 'all', search: '' });
-  });
-
-  // Goto repeat
-  document.getElementById('goto-repeat')?.addEventListener('click', () => {
-    setState({ tab: 'plan', statusFilter: 'repeat', phaseFilter: 0, search: '' });
-  });
-
-  // Export / Import
-  document.getElementById('btn-export')?.addEventListener('click', exportJSON);
-  document.getElementById('btn-export2')?.addEventListener('click', exportJSON);
-  document.getElementById('btn-import')?.addEventListener('click', importJSON);
-  document.getElementById('btn-import2')?.addEventListener('click', importJSON);
-
-  // Search
-  document.getElementById('search-input')?.addEventListener('input', (e) => {
-    state.search = e.target.value;
-    render();
-    // Re-focus search after render
-    setTimeout(() => {
-      const inp = document.getElementById('search-input');
-      if (inp) { inp.focus(); inp.selectionStart = inp.selectionEnd = inp.value.length; }
-    }, 0);
-  });
-
-  // Phase pills
-  document.querySelectorAll('[data-phase]').forEach(el => {
-    el.addEventListener('click', () => {
-      const p = parseInt(el.dataset.phase);
-      setState({ phaseFilter: state.phaseFilter === p ? 0 : p });
-    });
-  });
-
-  // Filter chips
-  document.querySelectorAll('[data-filter]').forEach(el => {
-    el.addEventListener('click', () => {
-      const f = el.dataset.filter;
-      setState({ statusFilter: state.statusFilter === f ? 'all' : f });
-    });
-  });
-
-  // Toggle week expand
-  document.querySelectorAll('[data-toggle]').forEach(el => {
-    el.addEventListener('click', () => {
-      const w = parseInt(el.dataset.toggle);
-      setState({ expanded: state.expanded === w ? null : w });
-    });
-  });
-
-  // Rating buttons
-  document.querySelectorAll('[data-rate]').forEach(el => {
-    el.addEventListener('click', () => {
-      const [w, r] = el.dataset.rate.split('-').map(Number);
-      const current = state.userData[w]?.rating;
-      updateWeek(w, 'rating', current === r ? 0 : r);
-    });
-  });
-
-  // Done toggles
-  document.querySelectorAll('[data-done]').forEach(el => {
-    el.addEventListener('click', () => {
-      const w = parseInt(el.dataset.done);
-      updateWeek(w, 'done', !state.userData[w]?.done);
-    });
-  });
-
-  // Repeat toggles
-  document.querySelectorAll('[data-repeat]').forEach(el => {
-    el.addEventListener('click', () => {
-      const w = parseInt(el.dataset.repeat);
-      updateWeek(w, 'repeat', !state.userData[w]?.repeat);
-    });
-  });
-
-  // Notes (debounced, no re-render to keep focus on iOS Safari)
+  // Notes: focus/blur/input (these are on textareas that get recreated)
   document.querySelectorAll('[data-notes]').forEach(el => {
     el.addEventListener('focus', () => { state._notesActive = true; });
     el.addEventListener('blur', () => { state._notesActive = false; });
@@ -747,25 +680,116 @@ function bindEvents() {
     });
   });
 
-  // Settings: theme
-  document.querySelectorAll('[data-theme]').forEach(el => {
-    el.addEventListener('click', () => setTheme(el.dataset.theme));
-  });
+  // Skip delegation setup if already bound
+  if (_delegationBound) return;
+  _delegationBound = true;
 
-  // Settings: type size
-  document.querySelectorAll('[data-typesize]').forEach(el => {
-    el.addEventListener('click', () => setTypeSize(el.dataset.typesize));
-  });
+  // Single click handler on root — covers all data-* buttons
+  document.addEventListener('click', async (e) => {
+    const t = e.target;
 
-  // Settings: logout
-  document.getElementById('settings-logout')?.addEventListener('click', async () => {
-    if (confirm('Abmelden?')) {
-      if (state.demoMode) {
-        state.user = null; state.demoMode = false; state.userData = {}; state.currentWeek = 1;
-        render(); return;
+    // data-tab (nav buttons)
+    const tabEl = t.closest('[data-tab]');
+    if (tabEl) { setState({ tab: tabEl.dataset.tab }); return; }
+
+    // data-toggle (expand/collapse week)
+    const toggleEl = t.closest('[data-toggle]');
+    if (toggleEl) {
+      const w = parseInt(toggleEl.dataset.toggle);
+      setState({ expanded: state.expanded === w ? null : w });
+      return;
+    }
+
+    // data-rate (rating buttons)
+    const rateEl = t.closest('[data-rate]');
+    if (rateEl) {
+      const [w, r] = rateEl.dataset.rate.split('-').map(Number);
+      const current = state.userData[w]?.rating;
+      updateWeek(w, 'rating', current === r ? 0 : r);
+      return;
+    }
+
+    // data-done (done toggles)
+    const doneEl = t.closest('[data-done]');
+    if (doneEl) {
+      const w = parseInt(doneEl.dataset.done);
+      updateWeek(w, 'done', !state.userData[w]?.done);
+      return;
+    }
+
+    // data-repeat (repeat toggles)
+    const repeatEl = t.closest('[data-repeat]');
+    if (repeatEl) {
+      const w = parseInt(repeatEl.dataset.repeat);
+      updateWeek(w, 'repeat', !state.userData[w]?.repeat);
+      return;
+    }
+
+    // data-phase (phase filter pills)
+    const phaseEl = t.closest('[data-phase]');
+    if (phaseEl) {
+      const p = parseInt(phaseEl.dataset.phase);
+      setState({ phaseFilter: state.phaseFilter === p ? 0 : p });
+      return;
+    }
+
+    // data-filter (status filter chips)
+    const filterEl = t.closest('[data-filter]');
+    if (filterEl) {
+      const f = filterEl.dataset.filter;
+      setState({ statusFilter: state.statusFilter === f ? 'all' : f });
+      return;
+    }
+
+    // data-theme (settings theme buttons)
+    const themeEl = t.closest('[data-theme]');
+    if (themeEl) { setTheme(themeEl.dataset.theme); return; }
+
+    // data-typesize (settings size buttons)
+    const sizeEl = t.closest('[data-typesize]');
+    if (sizeEl) { setTypeSize(sizeEl.dataset.typesize); return; }
+
+    // user-pill (logout)
+    const pillEl = t.closest('#user-pill');
+    if (pillEl) {
+      if (confirm('Abmelden?')) {
+        if (state.demoMode) {
+          state.user = null; state.demoMode = false; state.userData = {}; state.currentWeek = 1;
+          render(); return;
+        }
+        if (unsubscribeSnapshot) unsubscribeSnapshot();
+        await initFirebase.signOut(initFirebase.auth);
       }
-      if (unsubscribeSnapshot) unsubscribeSnapshot();
-      await initFirebase.signOut(initFirebase.auth);
+      return;
+    }
+
+    // goto-current banner
+    if (t.closest('#goto-current')) {
+      setState({ tab: 'plan', expanded: state.currentWeek, phaseFilter: 0, statusFilter: 'all', search: '' });
+      return;
+    }
+
+    // goto-repeat banner
+    if (t.closest('#goto-repeat')) {
+      setState({ tab: 'plan', statusFilter: 'repeat', phaseFilter: 0, search: '' });
+      return;
+    }
+
+    // Export / Import
+    if (t.closest('#btn-export') || t.closest('#btn-export2')) { exportJSON(); return; }
+    if (t.closest('#btn-import') || t.closest('#btn-import2')) { importJSON(); return; }
+
+    // Settings: logout
+    if (t.closest('#settings-logout')) {
+      if (confirm('Abmelden?')) {
+        if (state.demoMode) {
+          state.user = null; state.demoMode = false; state.userData = {}; state.currentWeek = 1;
+          render(); return;
+        }
+        if (unsubscribeSnapshot) unsubscribeSnapshot();
+        await initFirebase.signOut(initFirebase.auth);
+      }
+      return;
     }
   });
 }
