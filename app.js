@@ -391,7 +391,10 @@ function renderWeekCardHTML(w) {
 
 // Bind notes listeners on a single textarea element
 function bindNotesOn(el) {
-  el.addEventListener('focus', () => { state._notesActive = true; });
+  el.addEventListener('focus', () => {
+    state._notesActive = true;
+    setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 120);
+  });
   el.addEventListener('blur', () => { state._notesActive = false; });
   el.addEventListener('input', (e) => {
     const wn = parseInt(el.dataset.notes);
