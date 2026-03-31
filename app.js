@@ -88,6 +88,7 @@ let state = {
   userData: {},  // { [weekNum]: { rating, done, notes, repeat } }
   syncStatus: 'ok', // ok | saving | error
   homeExpanded: false,
+  ownedBooks: {},  // { [bookIndex]: true }
   authReady: false,
   demoMode: false,
   theme: localStorage.getItem('kp-theme') || 'auto', // day | night | auto
@@ -110,6 +111,7 @@ function startDemoMode() {
   state.user = { displayName: 'Demo', photoURL: '', uid: 'demo' };
   state.userData = data.userData || {};
   state.currentWeek = data.currentWeek || 1;
+  state.ownedBooks = data.ownedBooks || {};
   state.loading = false;
   state.demoMode = true;
   state.syncStatus = 'ok';
@@ -123,6 +125,7 @@ function saveDemoData() {
   localStorage.setItem('kochplan-demo', JSON.stringify({
     userData: state.userData,
     currentWeek: state.currentWeek,
+    ownedBooks: state.ownedBooks,
   }));
 }
 
@@ -139,6 +142,7 @@ async function saveToFirestore() {
     await initFirebase.setDoc(userDocRef(), {
       userData: state.userData,
       currentWeek: state.currentWeek,
+      ownedBooks: state.ownedBooks,
       updatedAt: new Date().toISOString(),
     }, { merge: true });
     state.syncStatus = 'ok';
@@ -178,6 +182,7 @@ function listenToFirestore() {
       if (incoming !== current) {
         state.userData = d.userData || {};
         state.currentWeek = d.currentWeek || 1;
+        state.ownedBooks = d.ownedBooks || {};
         state.syncStatus = 'ok';
         migrateRatings();
         // Don't re-render if user is typing in a textarea
@@ -750,6 +755,25 @@ function render() {
     ARRIVAL_CRITERIA.forEach(c => { html += `<div class="milestone-item">${esc(c)}</div>`; });
     html += `</div>`;
 
+    // Books list
+    const ownedCount = Object.keys(state.ownedBooks).filter(k => state.ownedBooks[k]).length;
+    html += `<div class="assess-card"><h3>Bücherliste</h3>
+      <div class="books-counter">${ownedCount} von ${BOOKS.length} vorhanden</div>
+      <div class="books-list">`;
+    BOOKS.forEach((b, i) => {
+      const owned = state.ownedBooks[i];
+      html += `
+        <div class="book-item${owned ? ' owned' : ''}" data-book="${i}">
+          <button class="book-check${owned ? ' on' : ''}" data-book-toggle="${i}">${owned ? '✓' : ''}</button>
+          <div class="book-info">
+            <div class="book-title">${esc(b.title)}</div>
+            <div class="book-author">${esc(b.author)}</div>
+            <div class="book-meta">${esc(b.usedIn)} · ${esc(b.why)}</div>
+          </div>
+        </div>`;
+    });
+    html += `</div></div>`;
+
     html += `
       <div class="export-row">
         <button class="export-btn" id="btn-export2">📥 JSON-Backup exportieren</button>
@@ -957,6 +981,28 @@ function bindEvents() {
         if (unsubscribeSnapshot) unsubscribeSnapshot();
         await initFirebase.signOut(initFirebase.auth);
       }
+      return;
+    }
+
+    // Book ownership toggle
+    const bookToggle = t.closest('[data-book-toggle]');
+    if (bookToggle) {
+      const idx = parseInt(bookToggle.dataset.bookToggle);
+      state.ownedBooks = { ...state.ownedBooks, [idx]: !state.ownedBooks[idx] };
+      // Update in place
+      const item = bookToggle.closest('.book-item');
+      if (item) {
+        item.classList.toggle('owned');
+        bookToggle.classList.toggle('on');
+        bookToggle.textContent = state.ownedBooks[idx] ? '✓' : '';
+      }
+      // Update counter
+      const counter = document.querySelector('.books-counter');
+      if (counter) {
+        const ownedCount = Object.keys(state.ownedBooks).filter(k => state.ownedBooks[k]).length;
+        counter.textContent = `${ownedCount} von ${BOOKS.length} vorhanden`;
+      }
+      debouncedSave();
       return;
     }
 
