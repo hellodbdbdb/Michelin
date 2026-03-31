@@ -651,8 +651,8 @@ function render() {
     // Build carousel of upcoming open (not done) weeks around currentWeek
     const allOpen = WEEKS.filter(w => !(state.userData[w.w] || {}).done);
     const focusInOpen = allOpen.findIndex(w => w.w === state.currentWeek);
-    const startIdx = Math.max(0, focusInOpen <= 0 ? 0 : focusInOpen);
-    const openWeeks = allOpen.slice(startIdx, startIdx + 8);
+    const startIdx = Math.max(0, (focusInOpen <= 0 ? 0 : focusInOpen) - 4);
+    const openWeeks = allOpen.slice(startIdx, startIdx + 12);
 
     if (openWeeks.length > 0) {
       html += `<div class="carousel-counter">${focusInOpen + 1} von ${allOpen.length} offen</div>`;
