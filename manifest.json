@@ -1,7 +1,8 @@
 {
   "name": "Kochplan — 208 Wochen",
   "short_name": "Kochplan",
-  "start_url": "/",
+  "start_url": "/Michelin/",
+  "scope": "/Michelin/",
   "display": "standalone",
   "background_color": "#0c0e14",
   "theme_color": "#0c0e14",
