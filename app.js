@@ -217,7 +217,7 @@ function updateWeek(weekNum, field, value) {
     [weekNum]: { ...(state.userData[weekNum] || {}), [field]: value }
   };
   // Try targeted update on plan tab; fall back to full render
-  if (state.tab === 'plan' && updateWeekCardDOM(weekNum)) {
+  if (state.tab === 'plan' && updateCardHeader(weekNum)) {
     // Card updated in-place, no full re-render needed
   } else {
     render();
@@ -322,7 +322,36 @@ function getFilteredWeeks() {
   });
 }
 
-// ─── WEEK CARD RENDERER (reused for both full render and targeted updates) ──
+// ─── WEEK CARD RENDERING ────────────────────────────────────────────────
+
+// Body content only (used for surgical expand)
+function renderWeekBodyHTML(w) {
+  const ud = state.userData[w.w] || {};
+  let html = `<div class="wc-body">`;
+  if (w.desc) html += `<div class="wc-desc">${esc(w.desc)}</div>`;
+  if (w.dish) html += `<div class="wc-field"><div class="wc-field-label">Gericht</div><div class="wc-field-val dish">${esc(w.dish)}${w.ownBook ? '<span class="wc-own-book">📚 Eigenes Buch</span>' : ''}</div></div>`;
+  if (w.source) html += `<div class="wc-field"><div class="wc-field-label">Quelle</div><div class="wc-field-val">${esc(w.source)}</div></div>`;
+  if (w.technique) html += `<div class="wc-field"><div class="wc-field-label">Schlüsseltechnik</div><div class="wc-field-val">${esc(w.technique)}</div></div>`;
+  if (w.details) html += `<div class="wc-field"><div class="wc-field-label">Technik-Details</div><div class="wc-field-val wc-details">${esc(w.details)}</div></div>`;
+  if (w.resource) html += `<div class="wc-field"><div class="wc-field-label">Ressource</div><div class="wc-field-val">${esc(w.resource)}</div></div>`;
+  if (w.check) html += `<div class="wc-field"><div class="wc-field-label">Selbstprüfung</div><div class="wc-field-val" style="color:var(--amber);font-style:italic">${esc(w.check)}</div></div>`;
+  html += `<div class="wc-field"><div class="wc-field-label">Schulnote (1–5)</div><div class="rating-sel">`;
+  for (let r = 1; r <= 5; r++) {
+    const active = ud.rating === r;
+    const style = active ? `border-color:${RATING_LABELS[r].color};color:${RATING_LABELS[r].color};background:${RATING_LABELS[r].color}20` : '';
+    html += `<button class="rating-btn ${active ? 'active' : ''}" style="${style}" data-rate="${w.w}-${r}">${r}</button>`;
+  }
+  html += `</div>`;
+  if ((ud.rating || 0) > 0) html += `<div class="rating-desc" style="color:${RATING_LABELS[ud.rating].color}">${RATING_LABELS[ud.rating].desc} — ${RATING_LABELS[ud.rating].detail}</div>`;
+  html += `</div>`;
+  html += `<div class="toggle-row"><button class="toggle-btn green ${ud.done ? 'on' : ''}" data-done="${w.w}"></button><span class="toggle-label">${ud.done ? 'Erledigt ✓' : 'Als erledigt markieren'}</span></div>`;
+  html += `<div class="toggle-row"><button class="toggle-btn red ${ud.repeat ? 'on' : ''}" data-repeat="${w.w}"></button><span class="toggle-label" style="color:${ud.repeat ? 'var(--red)' : 'var(--text-m)'}">${ud.repeat ? '⟳ Wiederholung nötig' : 'Wiederholung markieren'}</span></div>`;
+  html += `<div class="wc-field" style="margin-top:10px"><div class="wc-field-label">Notizen</div><textarea class="notes-area" placeholder="Was lief gut? Was war schwierig?" data-notes="${w.w}" rows="3">${esc(ud.notes || '')}</textarea></div>`;
+  html += `</div>`;
+  return html;
+}
+
+// Full card HTML (header + optional body, used for initial render only)
 function renderWeekCardHTML(w) {
   const ud = state.userData[w.w] || {};
   const isOpen = state.expanded === w.w;
@@ -342,55 +371,81 @@ function renderWeekCardHTML(w) {
   if ((ud.rating || 0) > 0) html += `<span class="wc-rating" style="background:${ri.color}18;color:${ri.color}">${ud.rating}</span>`;
   html += `<span class="wc-chevron ${isOpen ? 'open' : ''}">${icons.chevron}</span>`;
   html += `</div>`;
-
-  if (isOpen) {
-    html += `<div class="wc-body">`;
-    if (w.desc) html += `<div class="wc-desc">${esc(w.desc)}</div>`;
-    if (w.dish) html += `<div class="wc-field"><div class="wc-field-label">Gericht</div><div class="wc-field-val dish">${esc(w.dish)}${w.ownBook ? '<span class="wc-own-book">📚 Eigenes Buch</span>' : ''}</div></div>`;
-    if (w.source) html += `<div class="wc-field"><div class="wc-field-label">Quelle</div><div class="wc-field-val">${esc(w.source)}</div></div>`;
-    if (w.technique) html += `<div class="wc-field"><div class="wc-field-label">Schlüsseltechnik</div><div class="wc-field-val">${esc(w.technique)}</div></div>`;
-    if (w.details) html += `<div class="wc-field"><div class="wc-field-label">Technik-Details</div><div class="wc-field-val wc-details">${esc(w.details)}</div></div>`;
-    if (w.resource) html += `<div class="wc-field"><div class="wc-field-label">Ressource</div><div class="wc-field-val">${esc(w.resource)}</div></div>`;
-    if (w.check) html += `<div class="wc-field"><div class="wc-field-label">Selbstprüfung</div><div class="wc-field-val" style="color:var(--amber);font-style:italic">${esc(w.check)}</div></div>`;
-    html += `<div class="wc-field"><div class="wc-field-label">Schulnote (1–5)</div><div class="rating-sel">`;
-    for (let r = 1; r <= 5; r++) {
-      const active = ud.rating === r;
-      const style = active ? `border-color:${RATING_LABELS[r].color};color:${RATING_LABELS[r].color};background:${RATING_LABELS[r].color}20` : '';
-      html += `<button class="rating-btn ${active ? 'active' : ''}" style="${style}" data-rate="${w.w}-${r}">${r}</button>`;
-    }
-    html += `</div>`;
-    if ((ud.rating || 0) > 0) html += `<div class="rating-desc" style="color:${RATING_LABELS[ud.rating].color}">${RATING_LABELS[ud.rating].desc} — ${RATING_LABELS[ud.rating].detail}</div>`;
-    html += `</div>`;
-    html += `<div class="toggle-row"><button class="toggle-btn green ${ud.done ? 'on' : ''}" data-done="${w.w}"></button><span class="toggle-label">${ud.done ? 'Erledigt ✓' : 'Als erledigt markieren'}</span></div>`;
-    html += `<div class="toggle-row"><button class="toggle-btn red ${ud.repeat ? 'on' : ''}" data-repeat="${w.w}"></button><span class="toggle-label" style="color:${ud.repeat ? 'var(--red)' : 'var(--text-m)'}">${ud.repeat ? '⟳ Wiederholung nötig' : 'Wiederholung markieren'}</span></div>`;
-    html += `<div class="wc-field" style="margin-top:10px"><div class="wc-field-label">Notizen</div><textarea class="notes-area" placeholder="Was lief gut? Was war schwierig?" data-notes="${w.w}" rows="3">${esc(ud.notes || '')}</textarea></div>`;
-    html += `</div>`;
-  }
-
+  if (isOpen) html += renderWeekBodyHTML(w);
   html += `</div>`;
   return html;
 }
 
-// Targeted update: replace a single week card in the DOM without full re-render
-const _tmpDiv = document.createElement('div'); // reuse single temp element
-function updateWeekCardDOM(weekNum) {
-  const existing = document.querySelector(`[data-week="${weekNum}"]`);
-  if (!existing) return false;
+// ─── SURGICAL DOM OPERATIONS (no replaceWith, no full re-render) ────────
+
+// Bind notes listeners on a single textarea element
+function bindNotesOn(el) {
+  el.addEventListener('focus', () => { state._notesActive = true; });
+  el.addEventListener('blur', () => { state._notesActive = false; });
+  el.addEventListener('input', (e) => {
+    const wn = parseInt(el.dataset.notes);
+    state.userData = { ...state.userData, [wn]: { ...(state.userData[wn] || {}), notes: e.target.value } };
+    debouncedSave();
+  });
+}
+
+// Expand: insert body into existing card (card element stays in place)
+function expandWeek(weekNum) {
+  const card = document.querySelector(`[data-week="${weekNum}"]`);
+  if (!card) return;
   const w = weeksMap[weekNum];
-  if (!w) return false;
-  _tmpDiv.innerHTML = renderWeekCardHTML(w);
-  const newCard = _tmpDiv.firstElementChild;
-  existing.replaceWith(newCard);
-  // Re-bind notes listeners on the new card
-  const notesEl = newCard.querySelector('[data-notes]');
-  if (notesEl) {
-    notesEl.addEventListener('focus', () => { state._notesActive = true; });
-    notesEl.addEventListener('blur', () => { state._notesActive = false; });
-    notesEl.addEventListener('input', (e) => {
-      const wn = parseInt(notesEl.dataset.notes);
-      state.userData = { ...state.userData, [wn]: { ...(state.userData[wn] || {}), notes: e.target.value } };
-      debouncedSave();
-    });
+  if (!w) return;
+  card.querySelector('.wc-top').insertAdjacentHTML('afterend', renderWeekBodyHTML(w));
+  card.querySelector('.wc-chevron').classList.add('open');
+  const notesEl = card.querySelector('[data-notes]');
+  if (notesEl) bindNotesOn(notesEl);
+}
+
+// Collapse: remove body from existing card (card element stays in place)
+function collapseWeek(weekNum) {
+  const card = document.querySelector(`[data-week="${weekNum}"]`);
+  if (!card) return;
+  const body = card.querySelector('.wc-body');
+  if (body) body.remove();
+  const chevron = card.querySelector('.wc-chevron');
+  if (chevron) chevron.classList.remove('open');
+}
+
+// Update header badges + card classes in-place (for rating/done/repeat)
+function updateCardHeader(weekNum) {
+  const card = document.querySelector(`[data-week="${weekNum}"]`);
+  if (!card) return false;
+  const ud = state.userData[weekNum] || {};
+  const isCurrent = weekNum === state.currentWeek;
+
+  // Update card CSS classes
+  let cls = 'week-card';
+  if (isCurrent) cls += ' current';
+  if (ud.repeat) cls += ' needs-repeat';
+  if (ud.done && !isCurrent) cls += ' done';
+  card.className = cls;
+
+  // Update header badges (remove old, insert new before chevron)
+  const top = card.querySelector('.wc-top');
+  top.querySelectorAll('.wc-check-done, .wc-rating').forEach(el => el.remove());
+  const chevron = top.querySelector('.wc-chevron');
+  if (ud.done) {
+    chevron.insertAdjacentHTML('beforebegin',
+      `<span class="wc-check-done" style="background:rgba(34,197,94,0.15);color:var(--green)">✓</span>`);
+  }
+  if ((ud.rating || 0) > 0) {
+    const ri = RATING_LABELS[ud.rating];
+    chevron.insertAdjacentHTML('beforebegin',
+      `<span class="wc-rating" style="background:${ri.color}18;color:${ri.color}">${ud.rating}</span>`);
+  }
+
+  // If expanded, refresh body content (swap body, not entire card)
+  if (state.expanded === weekNum) {
+    const body = card.querySelector('.wc-body');
+    if (body) body.remove();
+    top.insertAdjacentHTML('afterend', renderWeekBodyHTML(weeksMap[weekNum]));
+    const notesEl = card.querySelector('[data-notes]');
+    if (notesEl) bindNotesOn(notesEl);
   }
   return true;
 }
@@ -743,16 +798,8 @@ function bindEvents() {
     setCurrentWeek(parseInt(e.target.value) || 1);
   });
 
-  // Notes: focus/blur/input (these are on textareas that get recreated)
-  document.querySelectorAll('[data-notes]').forEach(el => {
-    el.addEventListener('focus', () => { state._notesActive = true; });
-    el.addEventListener('blur', () => { state._notesActive = false; });
-    el.addEventListener('input', (e) => {
-      const w = parseInt(el.dataset.notes);
-      state.userData = { ...state.userData, [w]: { ...(state.userData[w] || {}), notes: e.target.value } };
-      debouncedSave();
-    });
-  });
+  // Notes: bind on any currently-visible textareas
+  document.querySelectorAll('[data-notes]').forEach(el => bindNotesOn(el));
 
   // Skip delegation setup if already bound
   if (_delegationBound) return;
@@ -774,8 +821,8 @@ function bindEvents() {
       state.expanded = (prev === w) ? null : w;
       // Update only the affected cards instead of full re-render
       if (state.tab === 'plan') {
-        if (prev && prev !== w) updateWeekCardDOM(prev); // collapse old
-        updateWeekCardDOM(w); // expand/collapse clicked
+        if (prev) collapseWeek(prev);
+        if (state.expanded) expandWeek(w);
       } else {
         render();
       }
