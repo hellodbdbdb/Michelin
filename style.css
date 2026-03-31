@@ -264,11 +264,33 @@ body {
 .notes-area:focus { border-color:var(--accent); }
 .notes-area::placeholder { color:var(--text-d); }
 
+/* ── LESSON CAROUSEL ── */
+.lesson-carousel {
+  display:flex; gap:12px; padding:14px 12px;
+  overflow-x:auto; scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch; scroll-behavior:smooth;
+}
+.lesson-carousel::-webkit-scrollbar { display:none; }
+.lesson-carousel .current-banner {
+  flex:0 0 calc(100% - 24px); scroll-snap-align:center;
+  margin:0;
+}
+
+/* ── CAROUSEL COUNTER ── */
+.carousel-counter {
+  font-size:12px; font-weight:600; letter-spacing:1px; text-transform:uppercase;
+  color:var(--text-d); text-align:center; padding:10px 12px 0;
+}
+
 /* ── CURRENT WEEK BANNER ── */
 .current-banner {
   margin:14px 12px 6px; padding:16px 18px;
   background:linear-gradient(135deg, rgba(129,140,248,0.1), rgba(96,165,250,0.06));
   border:1px solid rgba(129,140,248,0.25); border-radius:12px; cursor:pointer;
+}
+.current-banner.focus {
+  border-color:var(--accent);
+  box-shadow:0 0 20px rgba(211,7,43,0.12);
 }
 .current-banner.repeat {
   border-color:rgba(239,68,68,0.3);

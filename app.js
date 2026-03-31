@@ -221,8 +221,8 @@ function updateWeek(weekNum, field, value) {
   if (state.tab === 'plan' && updateCardHeader(weekNum)) {
     // Card updated in-place on plan tab
   } else if (state.tab === 'home' && state.homeExpanded && weekNum === state.currentWeek) {
-    // Refresh expanded body on home banner
-    const banner = document.getElementById('home-current');
+    // Refresh expanded body on home carousel card
+    const banner = document.querySelector(`[data-carousel-week="${weekNum}"]`);
     if (banner) {
       const body = banner.querySelector('.wc-body');
       if (body) body.remove();
@@ -641,31 +641,44 @@ function render() {
         </div>
       </div>
 
-      <div class="set-week-row">
-        <span class="set-week-label">Aktuelle Woche:</span>
-        <input class="set-week-input" type="number" min="1" max="208" value="${state.currentWeek}" id="cw-input">
-        <span class="set-week-label" style="color:var(--text-d)">von 208</span>
-      </div>`;
+    `;
 
-    if (cw) {
-      const hOpen = state.homeExpanded;
-      html += `
-        <div class="current-banner" id="home-current">
-          <div class="cb-top" data-home-toggle>
-            <div>
-              <div class="cb-label">▶ Diese Woche</div>
-              <div class="cb-theme">${esc(cw.theme)}</div>
-              ${cw.dish ? `<div class="cb-sub">${esc(cw.dish)}</div>` : ''}
+    // Build carousel of upcoming open (not done) weeks around currentWeek
+    const allOpen = WEEKS.filter(w => !(state.userData[w.w] || {}).done);
+    const focusInOpen = allOpen.findIndex(w => w.w === state.currentWeek);
+    const startIdx = Math.max(0, focusInOpen <= 0 ? 0 : focusInOpen);
+    const openWeeks = allOpen.slice(startIdx, startIdx + 8);
+
+    if (openWeeks.length > 0) {
+      html += `<div class="carousel-counter">${focusInOpen + 1} von ${allOpen.length} offen</div>`;
+      html += `<div class="lesson-carousel" id="lesson-carousel">`;
+      openWeeks.forEach((w, i) => {
+        const isFocus = w.w === state.currentWeek;
+        const ud = state.userData[w.w] || {};
+        const isRepeat = ud.repeat;
+        const hOpen = isFocus && state.homeExpanded;
+        const pc = phaseColorMap[w.phase] || '#818cf8';
+        html += `
+          <div class="current-banner${isFocus ? ' focus' : ''}${isRepeat ? ' repeat' : ''}" data-carousel-week="${w.w}">
+            <div class="cb-top" data-home-toggle="${w.w}">
+              <div>
+                <div class="cb-label" style="color:${isFocus ? 'var(--accent)' : pc}">${isFocus ? '▶ Fokus' : `W${w.w}`}</div>
+                <div class="cb-theme">${esc(w.theme)}</div>
+                ${w.dish ? `<div class="cb-sub">${esc(w.dish)}</div>` : ''}
+              </div>
+              <span class="wc-chevron cb-chevron ${hOpen ? 'open' : ''}">${icons.chevron}</span>
             </div>
-            <span class="wc-chevron cb-chevron ${hOpen ? 'open' : ''}">${icons.chevron}</span>
-          </div>
-          ${hOpen ? renderWeekBodyHTML(cw) : ''}
-        </div>`;
+            ${hOpen ? renderWeekBodyHTML(w) : ''}
+          </div>`;
+      });
+      html += `</div>`;
+
+      // No dots — counter shown above carousel
     }
 
     if (repeatCount > 0) {
       html += `
-        <div class="current-banner repeat" id="goto-repeat">
+        <div class="current-banner repeat" id="goto-repeat" style="margin:6px 12px">
           <div class="cb-label red">⟳ Wiederholung nötig</div>
           <div class="cb-theme" style="font-size:13px">${repeatCount} Woche${repeatCount > 1 ? 'n' : ''} markiert</div>
         </div>`;
@@ -819,6 +832,40 @@ function bindEvents() {
     setCurrentWeek(parseInt(e.target.value) || 1);
   });
 
+  // Carousel: scroll to focus card and listen for swipe
+  const carousel = document.getElementById('lesson-carousel');
+  if (carousel) {
+    // Scroll to current focus card on render
+    const focusCard = carousel.querySelector('.current-banner.focus');
+    if (focusCard) {
+      requestAnimationFrame(() => {
+        focusCard.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' });
+      });
+    }
+    // Detect swipe end → update focus lesson
+    let scrollTimer = null;
+    carousel.addEventListener('scroll', () => {
+      if (scrollTimer) clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        const cards = carousel.querySelectorAll('[data-carousel-week]');
+        const cx = carousel.scrollLeft + carousel.offsetWidth / 2;
+        let closest = null, closestDist = Infinity;
+        cards.forEach(c => {
+          const mid = c.offsetLeft + c.offsetWidth / 2;
+          const d = Math.abs(mid - cx);
+          if (d < closestDist) { closestDist = d; closest = c; }
+        });
+        if (closest) {
+          const w = parseInt(closest.dataset.carouselWeek);
+          if (w && w !== state.currentWeek) {
+            state.homeExpanded = false;
+            setCurrentWeek(w);
+          }
+        }
+      }, 120);
+    }, { passive: true });
+  }
+
   // Notes: bind on any currently-visible textareas
   document.querySelectorAll('[data-notes]').forEach(el => bindNotesOn(el));
 
@@ -913,14 +960,22 @@ function bindEvents() {
       return;
     }
 
-    // Home: expand/collapse current week banner (toggle is on header only)
-    if (t.closest('[data-home-toggle]')) {
-      const banner = document.getElementById('home-current');
-      if (!banner) return;
+    // Home: expand/collapse carousel card
+    const homeToggle = t.closest('[data-home-toggle]');
+    if (homeToggle) {
+      const w = parseInt(homeToggle.dataset.homeToggle);
+      const banner = homeToggle.closest('.current-banner');
+      if (!banner || !w) return;
+      // If tapping a different card than focus, make it focus first
+      if (w !== state.currentWeek) {
+        state.homeExpanded = false;
+        setCurrentWeek(w);
+        return;
+      }
       state.homeExpanded = !state.homeExpanded;
       const chevron = banner.querySelector('.cb-chevron');
       if (state.homeExpanded) {
-        const cw = weeksMap[state.currentWeek];
+        const cw = weeksMap[w];
         if (!cw) return;
         banner.insertAdjacentHTML('beforeend', renderWeekBodyHTML(cw));
         if (chevron) chevron.classList.add('open');
