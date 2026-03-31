@@ -647,8 +647,8 @@ function render() {
     if (cw) {
       const hOpen = state.homeExpanded;
       html += `
-        <div class="current-banner" id="home-current" data-home-toggle>
-          <div class="cb-top">
+        <div class="current-banner" id="home-current">
+          <div class="cb-top" data-home-toggle>
             <div>
               <div class="cb-label">▶ Diese Woche</div>
               <div class="cb-theme">${esc(cw.theme)}</div>
@@ -910,7 +910,7 @@ function bindEvents() {
       return;
     }
 
-    // Home: expand/collapse current week banner
+    // Home: expand/collapse current week banner (toggle is on header only)
     if (t.closest('[data-home-toggle]')) {
       const banner = document.getElementById('home-current');
       if (!banner) return;
