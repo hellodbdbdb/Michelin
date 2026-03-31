@@ -16,6 +16,7 @@ async function loadData() {
     BOOKS = mod.BOOKS || [];
     console.log('[Kochplan] data.js loaded:', WEEKS.length, 'weeks,', BOOKS.length, 'books');
     buildPhaseColorMap();
+    buildWeeksMap();
     buildSearchIndex();
   } catch (e) {
     console.error('[Kochplan] Failed to load data.js:', e);
@@ -230,11 +231,16 @@ function setCurrentWeek(w) {
   debouncedSave();
 }
 
-// Pre-computed phase color map (avoids .find() inside render loop)
+// Pre-computed lookup maps (avoids .find() in hot paths)
 let phaseColorMap = {};
+let weeksMap = {};
 function buildPhaseColorMap() {
   phaseColorMap = {};
   if (PHASES) PHASES.forEach(p => { phaseColorMap[p.id] = p.color; });
+}
+function buildWeeksMap() {
+  weeksMap = {};
+  if (WEEKS) WEEKS.forEach(w => { weeksMap[w.w] = w; });
 }
 
 // Pre-built search index: static fields computed once, notes checked live
@@ -366,14 +372,14 @@ function renderWeekCardHTML(w) {
 }
 
 // Targeted update: replace a single week card in the DOM without full re-render
+const _tmpDiv = document.createElement('div'); // reuse single temp element
 function updateWeekCardDOM(weekNum) {
   const existing = document.querySelector(`[data-week="${weekNum}"]`);
   if (!existing) return false;
-  const w = WEEKS.find(wk => wk.w === weekNum);
+  const w = weeksMap[weekNum];
   if (!w) return false;
-  const tmp = document.createElement('div');
-  tmp.innerHTML = renderWeekCardHTML(w);
-  const newCard = tmp.firstElementChild;
+  _tmpDiv.innerHTML = renderWeekCardHTML(w);
+  const newCard = _tmpDiv.firstElementChild;
   existing.replaceWith(newCard);
   // Re-bind notes listeners on the new card
   const notesEl = newCard.querySelector('[data-notes]');
@@ -536,7 +542,7 @@ function render() {
   // ── HOME TAB ──
   if (state.tab === 'home') {
     const { doneCount, ratedCount, repeatCount, pct } = getStats();
-    const cw = WEEKS.find(w => w.w === state.currentWeek);
+    const cw = weeksMap[state.currentWeek];
 
     html += `
       <div class="hdr">

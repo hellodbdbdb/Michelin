@@ -176,6 +176,8 @@ body {
 .week-card {
   background:var(--surface); border:1px solid var(--border);
   border-radius:12px; margin-bottom:10px; overflow:hidden; transition:border-color .15s;
+  content-visibility:auto;
+  contain-intrinsic-size:auto 52px;
 }
 .week-card.current { border-color:var(--accent); box-shadow:0 0 24px rgba(129,140,248,0.08); }
 .week-card.needs-repeat { border-left:3px solid var(--red); }
